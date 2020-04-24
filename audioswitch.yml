@@ -1,0 +1,35 @@
+esphome:
+  name: audioswitch
+  platform: ESP32
+  board: nodemcu-32s
+  includes:
+    - custom_audio_switch.h
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "ESPHome Audioswitch"
+    password: !secret captive_portal_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+switch:
+  - platform: custom
+    lambda: |-
+      auto custom_audio_switch = new CustomAudioSwitch();
+      App.register_component(custom_audio_switch);
+      return {custom_audio_switch};
+
+    switches:
+      name: "Audio Switch"
