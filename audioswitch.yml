@@ -3,7 +3,7 @@ esphome:
   platform: ESP32
   board: nodemcu-32s
   includes:
-    - custom_audio_switch.h
+    - custom_audio_matrix.h
 
 wifi:
   ssid: !secret wifi_ssid
@@ -24,12 +24,24 @@ api:
 
 ota:
 
+custom_component:
+  - lambda: |-
+      auto custom_audio_matrix = CustomAudioMatrix::instance();
+      return {custom_audio_matrix};
+
 switch:
   - platform: custom
     lambda: |-
-      auto custom_audio_switch = new CustomAudioSwitch();
-      App.register_component(custom_audio_switch);
-      return {custom_audio_switch};
+      auto custom_audio_matrix = CustomAudioMatrix::instance();
+      return custom_audio_matrix->switches;
 
     switches:
-      name: "Audio Switch"
+      - name: "Audio Switch 1->1"
+      - name: "Audio Switch 1->2"
+      - name: "Audio Switch 1->3"
+      - name: "Audio Switch 2->1"
+      - name: "Audio Switch 2->2"
+      - name: "Audio Switch 2->3"
+      - name: "Audio Switch 3->1"
+      - name: "Audio Switch 3->2"
+      - name: "Audio Switch 3->3"
