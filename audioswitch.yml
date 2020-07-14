@@ -8,6 +8,7 @@ esphome:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  fast_connect: true
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -33,7 +34,16 @@ switch:
   - platform: custom
     lambda: |-
       auto custom_audio_matrix = CustomAudioMatrix::instance();
-      return custom_audio_matrix->switches;
+      return {
+        custom_audio_matrix->create_switch(1, 4),
+        custom_audio_matrix->create_switch(1, 5),
+        custom_audio_matrix->create_switch(3, 4),
+        custom_audio_matrix->create_switch(3, 5),
+        custom_audio_matrix->create_switch(5, 4),
+        custom_audio_matrix->create_switch(5, 5),
+        custom_audio_matrix->create_switch(7, 4),
+        custom_audio_matrix->create_switch(7, 5)
+      };
 
     switches:
       - name: "Audio Switch 1<-4"

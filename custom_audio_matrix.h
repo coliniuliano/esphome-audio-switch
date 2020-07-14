@@ -13,6 +13,10 @@
 #define PIN_AY1     13
 #define PIN_AY2     16
 
+// MT8808/MT8809 handle 8x8
+#define MAX_OUTPUTS 8
+#define MAX_INPUTS  8
+
 class AudioMatrixSwitch : public Switch {
 protected:
   std::function<void(bool)> write_state_fn;
@@ -26,16 +30,8 @@ public:
   }
 };
 
-// Matrix is ordered by output:
-// OUT0 : IN0, IN1, ..., IN7
-// OUT1 : IN0, IN1, ..., IN7
-// ...
-// OUT7 : IN0, IN1, ...
-
 class CustomAudioMatrix : public Component {
 public:
-  std::vector<Switch*> switches;
-
   static CustomAudioMatrix* instance() {
     static CustomAudioMatrix* INST = new CustomAudioMatrix();
     return INST;
@@ -57,47 +53,21 @@ public:
     pinMode(PIN_AY2, OUTPUT);
 
     digitalWrite(PIN_RESET, HIGH);
-    ESP_LOGD("CustomAudioMatrix", "Setup complete");
+    ESP_LOGD("custom_audio_matrix", "Hardware reset complete");
   }
 
-  // Callback when a switch is toggled from Home Assistant
-  void switch_toggled(uint8_t output, uint8_t input, bool state) {
-    ESP_LOGD("custom_audio_matrix", "Switch toggled (%d, %d) %s", output, input, state ? "on" : "off");
+  Switch* create_switch(uint8_t output, uint8_t input) {
+    if (output >= MAX_OUTPUTS || input >= MAX_INPUTS)
+      return nullptr;
 
-    // Clear all other inputs from the output
-    // NOTE: Inputs are on Y, outputs are on X
-    for (int x = 0; x < 8; x++)
-      if (x != input)
-        this->mt8808_send_data(output, x, false);
-
-    // Set output to requested state
-    this->mt8808_send_data(output, input, state);
-
-    // Report states for all inputs for this output
-    // NOTE: Hacky - switch at (output - 1) will be for input 4, while switch at (output) is for input 5
-    Switch *sw = this->switches.at(output);
-    sw->publish_state(input == 5 ? state : false);
-    sw = this->switches.at(output - 1);
-    sw->publish_state(input == 4 ? state : false);
+    auto write_state_fn = std::bind(&CustomAudioMatrix::switch_toggled, this, output, input, std::placeholders::_1);
+    Switch* sw = new AudioMatrixSwitch(write_state_fn);
+    this->switches[output][input] = sw;
+    return sw;
   }
 
 private:
-  CustomAudioMatrix() : Component() {
-    this->create_switch(1, 4);
-    this->create_switch(1, 5);
-    this->create_switch(3, 4);
-    this->create_switch(3, 5);
-    this->create_switch(5, 4);
-    this->create_switch(5, 5);
-    this->create_switch(7, 4);
-    this->create_switch(7, 5);
-  }
-
-  void create_switch(uint8_t output, uint8_t input) {
-    using namespace std::placeholders;
-    auto write_state_fn = std::bind(&CustomAudioMatrix::switch_toggled, this, output, input, _1);
-    this->switches.push_back(new AudioMatrixSwitch(write_state_fn));
-  }
+  std::array<std::array<Switch*, MAX_INPUTS>, MAX_OUTPUTS> switches;
 
   void mt8808_send_data(uint8_t addr_x, uint8_t addr_y, bool switch_en) {
     ESP_LOGD("custom_audio_matrix", "MT880x setting %d_%d %s", addr_x, addr_y, switch_en ? "on" : "off");
@@ -113,5 +83,25 @@ private:
     digitalWrite(PIN_STROBE, LOW);
     delay(10);
     digitalWrite(PIN_STROBE, HIGH);
+  }
+
+  void switch_toggled(uint8_t output, uint8_t input, bool state) {
+    ESP_LOGD("custom_audio_matrix", "Switch toggled (%d, %d) %s", output, input, state ? "on" : "off");
+
+    // Clear all other inputs from the output
+    // NOTE: Inputs are on Y, outputs are on X
+    for (int x = 0; x < MAX_INPUTS; x++)
+      if (x != input)
+        this->mt8808_send_data(output, x, false);
+
+    // Set output to requested state
+    this->mt8808_send_data(output, input, state);
+
+    // Report states for all inputs for this output
+    for (int x = 0; x < MAX_INPUTS; x++) {
+      Switch* sw = this->switches[output][x];
+      if (sw)
+        sw->publish_state(input == x ? state : false);
+    }
   }
 };
