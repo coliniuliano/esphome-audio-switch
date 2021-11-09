@@ -25,32 +25,36 @@ api:
 
 ota:
 
-custom_component:
-  - lambda: |-
-      auto custom_audio_matrix = CustomAudioMatrix::instance();
-      return {custom_audio_matrix};
-
 switch:
   - platform: custom
     lambda: |-
-      auto custom_audio_matrix = CustomAudioMatrix::instance();
+      auto custom_audio_matrix = new CustomAudioMatrix();
+      custom_audio_matrix->assign_mute_switch(7, out_7_mute);
       return {
-        custom_audio_matrix->create_switch(1, 4),
-        custom_audio_matrix->create_switch(1, 5),
-        custom_audio_matrix->create_switch(3, 4),
-        custom_audio_matrix->create_switch(3, 5),
-        custom_audio_matrix->create_switch(5, 4),
-        custom_audio_matrix->create_switch(5, 5),
         custom_audio_matrix->create_switch(7, 4),
         custom_audio_matrix->create_switch(7, 5)
       };
 
     switches:
-      - name: "Audio Switch 1<-4"
-      - name: "Audio Switch 1<-5"
-      - name: "Audio Switch 3<-4"
-      - name: "Audio Switch 3<-5"
-      - name: "Audio Switch 5<-4"
-      - name: "Audio Switch 5<-5"
-      - name: "Audio Switch 7<-4"
-      - name: "Audio Switch 7<-5"
+      - name: "OUT 7 <- IN 4"
+      - name: "OUT 7 <- IN 5"
+
+  - platform: gpio
+    id: out_7_mute
+    name: Out 7 Mute
+    restore_mode: ALWAYS_OFF
+    pin:
+      mcp23xxx: mcp23008_hub
+      number: 0
+      mode: OUTPUT
+      inverted: true
+
+i2c:
+  sda: 21
+  scl: 22
+  scan: true
+  frequency: 10kHz
+
+mcp23008:
+  - id: mcp23008_hub
+    address: 0x20

@@ -32,11 +32,6 @@ public:
 
 class CustomAudioMatrix : public Component {
 public:
-  static CustomAudioMatrix* instance() {
-    static CustomAudioMatrix* INST = new CustomAudioMatrix();
-    return INST;
-  }
-
   void setup() override {
     pinMode(PIN_RESET, OUTPUT);
     digitalWrite(PIN_RESET, LOW);
@@ -66,8 +61,13 @@ public:
     return sw;
   }
 
+  void assign_mute_switch(uint8_t output, Switch *mute_switch) {
+    this->mute_switches[output] = mute_switch;
+  }
+
 private:
   std::array<std::array<Switch*, MAX_INPUTS>, MAX_OUTPUTS> switches;
+  std::array<Switch*, MAX_OUTPUTS> mute_switches;
 
   void mt8808_send_data(uint8_t addr_x, uint8_t addr_y, bool switch_en) {
     ESP_LOGD("custom_audio_matrix", "MT880x setting %d_%d %s", addr_x, addr_y, switch_en ? "on" : "off");
@@ -88,6 +88,11 @@ private:
   void switch_toggled(uint8_t output, uint8_t input, bool state) {
     ESP_LOGD("custom_audio_matrix", "Switch toggled (%d, %d) %s", output, input, state ? "on" : "off");
 
+    // Mute the output before removing or switching its input
+    if (this->mute_switches[output]) {
+      this->mute_switches[output]->turn_on();
+    }
+
     // Clear all other inputs from the output
     // NOTE: Inputs are on Y, outputs are on X
     for (int x = 0; x < MAX_INPUTS; x++)
@@ -102,6 +107,11 @@ private:
       Switch* sw = this->switches[output][x];
       if (sw)
         sw->publish_state(input == x ? state : false);
+    }
+
+    // Unmute the output if an input was assigned
+    if (state && this->mute_switches[output]) {
+      this->mute_switches[output]->turn_off();
     }
   }
 };
