@@ -61,13 +61,13 @@ public:
     return sw;
   }
 
-  void assign_mute_switch(uint8_t output, Switch *mute_switch) {
-    this->mute_switches[output] = mute_switch;
+  void assign_enable_switch(uint8_t output, Switch* enable_switch) {
+    this->enable_switches[output] = enable_switch;
   }
 
 private:
   std::array<std::array<Switch*, MAX_INPUTS>, MAX_OUTPUTS> switches;
-  std::array<Switch*, MAX_OUTPUTS> mute_switches;
+  std::array<Switch*, MAX_OUTPUTS> enable_switches;
 
   void mt8808_send_data(uint8_t addr_x, uint8_t addr_y, bool switch_en) {
     ESP_LOGD("custom_audio_matrix", "MT880x setting %d_%d %s", addr_x, addr_y, switch_en ? "on" : "off");
@@ -89,8 +89,8 @@ private:
     ESP_LOGD("custom_audio_matrix", "Switch toggled (%d, %d) %s", output, input, state ? "on" : "off");
 
     // Mute the output before removing or switching its input
-    if (this->mute_switches[output]) {
-      this->mute_switches[output]->turn_on();
+    if (this->enable_switches[output]) {
+      this->enable_switches[output]->turn_off();
     }
 
     // Clear all other inputs from the output
@@ -105,13 +105,14 @@ private:
     // Report states for all inputs for this output
     for (int x = 0; x < MAX_INPUTS; x++) {
       Switch* sw = this->switches[output][x];
-      if (sw)
+      if (sw) {
         sw->publish_state(input == x ? state : false);
+      }
     }
 
-    // Unmute the output if an input was assigned
-    if (state && this->mute_switches[output]) {
-      this->mute_switches[output]->turn_off();
+    // Disable the output if an input was assigned
+    if (state && this->enable_switches[output]) {
+      this->enable_switches[output]->turn_on();
     }
   }
 };

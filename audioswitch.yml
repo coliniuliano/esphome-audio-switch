@@ -26,10 +26,20 @@ api:
 ota:
 
 switch:
+  - platform: gpio
+    id: out_7_enable
+    name: Out 7 Enable
+    restore_mode: ALWAYS_OFF
+    pin:
+      mcp23xxx: mcp23008_hub
+      number: 4
+      mode: OUTPUT
+      inverted: true
+
   - platform: custom
     lambda: |-
       auto custom_audio_matrix = new CustomAudioMatrix();
-      custom_audio_matrix->assign_mute_switch(7, out_7_mute);
+      custom_audio_matrix->assign_enable_switch(7, out_7_enable);
       return {
         custom_audio_matrix->create_switch(7, 4),
         custom_audio_matrix->create_switch(7, 5)
@@ -39,16 +49,6 @@ switch:
       - name: "OUT 7 <- IN 4"
       - name: "OUT 7 <- IN 5"
 
-  - platform: gpio
-    id: out_7_mute
-    name: Out 7 Mute
-    restore_mode: ALWAYS_OFF
-    pin:
-      mcp23xxx: mcp23008_hub
-      number: 0
-      mode: OUTPUT
-      inverted: true
-
 i2c:
   sda: 21
   scl: 22
@@ -57,4 +57,4 @@ i2c:
 
 mcp23008:
   - id: mcp23008_hub
-    address: 0x20
+    address: 0x27
